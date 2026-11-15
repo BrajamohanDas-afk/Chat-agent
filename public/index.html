@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="Since remembers what it told you, when it learned it, and whether the source still agrees." />
+    <title>Since — ask what changed</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23151a17'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%2383c9ab'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="/style.css" />
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to conversation</a>
+
+    <header class="site-header">
+      <div class="shell header-row">
+        <a class="brand" href="/" aria-label="Since home">Since</a>
+        <span id="demo-badge" class="badge badge-demo" hidden>Demo history (synthetic)</span>
+        <div class="header-actions" role="group" aria-label="Chat actions">
+          <button id="new-chat" class="btn" type="button">New chat</button>
+          <button
+            id="sessions-toggle"
+            class="btn"
+            type="button"
+            aria-expanded="false"
+            aria-controls="sessions-panel"
+          >
+            Sessions
+          </button>
+        </div>
+      </div>
+      <div id="sessions-panel" class="sessions-panel" role="region" aria-labelledby="sessions-title" hidden>
+        <div class="shell sessions-inner">
+          <p id="sessions-title" class="sessions-title">Sessions</p>
+          <ul id="sessions-list" class="sessions-list"></ul>
+          <p id="sessions-empty" class="muted" hidden>No sessions yet. Start a chat or load the demo history.</p>
+          <p id="sessions-error" class="error-text" role="alert" hidden></p>
+        </div>
+      </div>
+    </header>
+
+    <main id="main" class="main" tabindex="-1">
+      <div class="shell">
+        <section id="landing" class="landing" aria-labelledby="landing-title">
+          <p class="eyebrow">Dated memory, checked sources</p>
+          <h1 id="landing-title">Ask what changed.</h1>
+          <p class="lede">
+            Since remembers what it told you, when it learned it, and whether the source still agrees.
+          </p>
+          <div id="examples" class="examples" role="group" aria-label="Example prompts"></div>
+          <div class="landing-actions">
+            <button id="load-demo" class="btn btn-primary" type="button">Load demo history</button>
+          </div>
+          <p id="demo-note" class="muted demo-note" role="status" hidden></p>
+        </section>
+
+        <ol id="messages" class="messages"></ol>
+      </div>
+
+      <div class="composer-dock">
+        <div class="shell">
+          <form id="composer" class="composer" aria-busy="false">
+            <label class="sr-only" for="message">Message</label>
+            <textarea
+              id="message"
+              name="message"
+              rows="1"
+              maxlength="8000"
+              placeholder="Ask about something you discussed before…"
+              aria-describedby="composer-hint"
+              required
+            ></textarea>
+            <button id="send" class="btn btn-primary send" type="submit">Send</button>
+          </form>
+          <p id="composer-hint" class="hint">Enter to send · Shift+Enter for a new line</p>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>
