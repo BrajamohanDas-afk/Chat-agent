@@ -8,3 +8,5 @@ evals/results/
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+
+docs
