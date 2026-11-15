@@ -79,7 +79,12 @@ export function normalizeTavilyResponse(response: unknown): SearchResult[] {
 
     const content = (row.data.content ?? '').trim();
     const rawContent = row.data.raw_content?.trim() ?? '';
-    const passage = (rawContent.length > 0 ? rawContent : content).slice(0, PASSAGE_LIMIT);
+    // `content` is Tavily's query-relevant snippet; raw HTML often starts with
+    // navigation and buries the price. Put the snippet first, then the page text.
+    const passage = [content, rawContent]
+      .filter((part) => part.length > 0)
+      .join('\n\n')
+      .slice(0, PASSAGE_LIMIT);
 
     results.push({
       url: row.data.url,

@@ -35,6 +35,13 @@ describe('comparePrices', () => {
     expect(result.fields).toContainEqual({ field: 'unit', before: 'user', after: 'workspace' });
   });
 
+  it('treats user and seat as the same billing unit', () => {
+    const result = comparePrices(price(), price({ unit: 'seat' }));
+
+    expect(result.verdict).toBe('unchanged');
+    expect(result.reasons).toEqual(['no_material_change']);
+  });
+
   it('treats a different billing mode as a change even when the amount is the same', () => {
     const result = comparePrices(price(), price({ mode: 'flat' }));
 

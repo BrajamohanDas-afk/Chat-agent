@@ -40,10 +40,17 @@ export type EvidenceChoice = {
   sufficient: boolean;
 };
 
+const LOW_OFFICIAL = new Set(['community', 'support', 'blog', 'help', 'learn', 'academy']);
+
 export function sourceRank(url: string, officialDomain: string | null): Rank {
   const host = new URL(url).hostname.replace(/^www\./, '').toLowerCase();
   const official = officialDomain?.replace(/^www\./, '').toLowerCase() ?? null;
-  if (official && (host === official || host.endsWith(`.${official}`))) return 3;
+  if (official && (host === official || host.endsWith(`.${official}`))) {
+    // A vendor's community/support/blog post is on the official domain but is
+    // not the pricing page; treat it as press-tier, not primary evidence.
+    const subdomain = host.split('.')[0] ?? '';
+    return host !== official && LOW_OFFICIAL.has(subdomain) ? 2 : 3;
+  }
   if (PRESS.has(host)) return 2;
   if (COMMUNITY.has(host)) return 1;
   return 1;

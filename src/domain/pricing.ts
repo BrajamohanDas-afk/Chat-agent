@@ -38,6 +38,20 @@ export type PriceComparison = {
 const REQUIRED = ['plan', 'unit', 'period', 'currency'] as const;
 const norm = (value: string) => value.trim().toLowerCase().replace(/\s+/g, ' ');
 
+/** "Starter Customer Platform" and "Starter" are the same plan. */
+export function planKey(value: string): string {
+  return norm(value)
+    .replace(/\b(customer platform|crm|software|plan|edition)\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** "user" and "seat" are the same billing unit. */
+const unitKey = (value: string): string => {
+  const key = norm(value);
+  return key === 'user' || key === 'seat' ? 'seat' : key;
+};
+
 const sameConditions = (before: string[], after: string[]): boolean =>
   JSON.stringify(before.map(norm).sort()) === JSON.stringify(after.map(norm).sort());
 
@@ -54,14 +68,14 @@ export function comparePrices(before: PriceValue, after: PriceValue): PriceCompa
   };
   const conditionsChanged = !sameConditions(before.conditions, after.conditions);
 
-  if (norm(before.plan) !== norm(after.plan)) reasons.push('plan_changed');
+  if (planKey(before.plan) !== planKey(after.plan)) reasons.push('plan_changed');
   if (norm(before.region ?? '') !== norm(after.region ?? '')) reasons.push('region_changed');
   if (before.currency.toUpperCase() !== after.currency.toUpperCase()) {
     reasons.push('currency_changed');
   }
   if (before.period !== after.period) reasons.push('billing_period_changed');
   if (before.mode !== after.mode) reasons.push('billing_mode_changed');
-  if (norm(before.unit) !== norm(after.unit)) reasons.push('unit_changed');
+  if (unitKey(before.unit) !== unitKey(after.unit)) reasons.push('unit_changed');
   if (conditionsChanged) reasons.push('conditions_changed');
   if (before.amount !== after.amount) {
     reasons.push(after.amount > before.amount ? 'price_increased' : 'price_decreased');

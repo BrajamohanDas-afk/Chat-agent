@@ -84,7 +84,7 @@ describe('normalizeTavilyResponse', () => {
       url: 'https://www.hubspot.com/pricing',
       title: 'HubSpot Pricing',
       snippet: 'HubSpot starts at $20 per seat.',
-      passage: RAW_CONTENT.slice(0, 4000),
+      passage: `HubSpot starts at $20 per seat.\n\n${RAW_CONTENT}`.slice(0, 4000),
       publishedAt: '2026-10-01T00:00:00Z',
       domain: 'hubspot.com',
     });

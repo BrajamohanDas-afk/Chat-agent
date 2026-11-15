@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   Analysis,
   ChatMessage,
   ComparisonRow,
@@ -33,6 +33,11 @@ Recheck answers:
 - Say "as of <date>" for prices, using the evidence fetch date.
 - If the historical baseline is unverified, say so once, plainly.
 - If a source announced a future change, say it is announced, not effective.
+- For each diff, cite both sides in the same sentence: the web evidence for the current value and the memory episode for the previous value, e.g. "HubSpot Starter is now $7 per seat per month, down from $20 [e1][m1]."
+- When a comparison row has both before and after values, report the numeric diff. Do not replace a supported diff with "I couldn't verify"; note the unverified baseline once instead.
+- A row with verdict "changed" must not appear under "what stayed the same". Use each row's verdict as the source of truth.
+- Cover every target in the comparison rows: report a diff or say you couldn't verify it. Never silently omit a vendor.
+- For rechecks, answer in at most 120 words with one bullet per target.
 
 Recall answers:
 - State the date and quote the prior answer accurately.
@@ -55,7 +60,7 @@ Style: short paragraphs, no filler, no "great question", no headings unless the 
     ? input.recall.decisions
         .map(
           (decision) =>
-            `- ${decision.type}: ${decision.topic} — ${decision.entities.join(', ')}`,
+            `- ${decision.type}: ${decision.topic} â€” ${decision.entities.join(', ')}`,
         )
         .join('\n')
     : 'none';
@@ -64,7 +69,7 @@ Style: short paragraphs, no filler, no "great question", no headings unless the 
     ? input.evidence
         .map(
           (e) =>
-            `[${e.id}] ${e.title} (${e.domain}, fetched ${e.fetchedAt.slice(0, 10)})\n${e.passage.slice(0, 1200)}`,
+            `[${e.id}] ${e.title} (${e.domain}, fetched ${e.fetchedAt.slice(0, 10)})\n${e.passage.slice(0, 800)}`,
         )
         .join('\n\n')
     : 'none';
@@ -73,7 +78,7 @@ Style: short paragraphs, no filler, no "great question", no headings unless the 
     ? input.comparison
         .map(
           (row) =>
-            `${row.entity} ${row.attribute}: ${row.verdict} — before ${JSON.stringify(row.before)} (${row.beforeDate ?? 'unknown'}), after ${JSON.stringify(row.after)} (${row.afterDate ?? 'unknown'}); reasons: ${row.reasons.join(', ')}; baseline verified: ${row.baselineVerified}`,
+            `${row.entity} ${row.attribute}: ${row.verdict} â€” before ${JSON.stringify(row.before)} (${row.beforeDate ?? 'unknown'}), after ${JSON.stringify(row.after)} (${row.afterDate ?? 'unknown'}); reasons: ${row.reasons.join(', ')}; baseline verified: ${row.baselineVerified}`,
         )
         .join('\n')
     : 'none';
@@ -84,7 +89,7 @@ Style: short paragraphs, no filler, no "great question", no headings unless the 
 
   const dates = input.analysis?.resolvedDates.length
     ? input.analysis.resolvedDates
-        .map((date) => `${date.original} → ${date.localStart.slice(0, 10)}`)
+        .map((date) => `${date.original} â†’ ${date.localStart.slice(0, 10)}`)
         .join(', ')
     : 'none';
 
@@ -116,3 +121,4 @@ ${input.userText}`;
     { role: 'user', content: user },
   ];
 }
+

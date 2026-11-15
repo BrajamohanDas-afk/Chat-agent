@@ -193,9 +193,9 @@ async function selectEpisodes(
     return { episodes: selected.length > 0 ? selected : visible, outcome: 'multiple' };
   }
   if (selected.length === 0) {
-    throw new Error(
-      `Selector returned outcome ${selection.outcome} but selected no episodes`,
-    );
+    // A selector saying "exact" but naming nothing means no usable memory.
+    // This is a fresh-question path, not a fatal error.
+    return { episodes: [], outcome: 'not_found' };
   }
   return { episodes: selected, outcome: selection.outcome };
 }

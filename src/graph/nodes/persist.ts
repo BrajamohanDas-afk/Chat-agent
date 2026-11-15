@@ -12,6 +12,7 @@ import {
   upsertEntity,
 } from '../../db/repo.js';
 import { embed } from '../../llm/embeddings.js';
+import { planKey } from '../../domain/pricing.js';
 import type { TurnStateType, TurnStateUpdate } from '../state.js';
 import type { Emit, TraceEvent } from '../types.js';
 
@@ -36,7 +37,7 @@ function planOf(value: unknown): string | null {
 function samePlan(before: unknown, after: string | null): boolean {
   const plan = planOf(before);
   if (plan === null || after === null) return plan === after;
-  return norm(plan) === norm(after);
+  return planKey(plan) === planKey(after);
 }
 
 function vectorBytes(vector: Float32Array): Uint8Array {

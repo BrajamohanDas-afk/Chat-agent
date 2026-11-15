@@ -30,9 +30,11 @@ export async function repairNode(
   );
 
   const sentences = splitSentences(state.draft);
-  const repaired = sentences
-    .map((sentence) => (failed.has(sentence.index) ? UNVERIFIED : sentence.text))
-    .join(' ');
+  const kept = sentences
+    .filter((sentence) => !failed.has(sentence.index))
+    .map((sentence) => sentence.text);
+  const repaired =
+    kept.length === 0 ? UNVERIFIED : `${kept.join(' ')}${failed.size > 0 ? ` ${UNVERIFIED}` : ''}`;
 
   emit?.({ type: 'status', stage: 'repair', detail: `${failed.size} claims replaced` });
   emit?.({ type: 'patch', text: repaired });

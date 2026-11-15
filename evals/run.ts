@@ -189,6 +189,7 @@ for (const scenario of scenarios) {
     title: row.title,
     domain: row.domain,
     publishedAt: row.publishedAt,
+    fetchedAt: row.fetchedAt,
   }));
 
   const ctx: ScenarioContext = {
@@ -200,7 +201,7 @@ for (const scenario of scenarios) {
     trace,
     latencyMs,
     firstTokenMs,
-    searches: analysis?.searchPlan.length ?? 0,
+    searches: analysis?.needsSearch ? analysis.searchPlan.length : 0,
     seed,
   };
 

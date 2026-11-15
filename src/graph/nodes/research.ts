@@ -159,14 +159,30 @@ export async function researchNode(
       }),
     ];
 
-    for (let round = 0; round < appConfig.caps.refinementCalls && refinementCalls < appConfig.caps.refinementCalls; round += 1) {
-      const response = await chatTools({
-        model: appConfig.models.fast,
-        messages,
-        tools: [webSearchTool],
-        toolChoice: 'auto',
-        maxTokens: 700,
-      });
+    const refineStarted = Date.now();
+    const refineBudgetMs = 4_000;
+
+    for (
+      let round = 0;
+      round < appConfig.caps.refinementCalls &&
+      refinementCalls < appConfig.caps.refinementCalls &&
+      Date.now() - refineStarted < refineBudgetMs;
+      round += 1
+    ) {
+      let response: Awaited<ReturnType<typeof chatTools>>;
+      try {
+        response = await chatTools({
+          model: appConfig.models.fast,
+          messages,
+          tools: [webSearchTool],
+          toolChoice: 'auto',
+          maxTokens: 700,
+          signal: AbortSignal.timeout(3_000),
+        });
+      } catch {
+        // Refinement is best effort; first-round evidence still answers the turn.
+        break;
+      }
 
       if (response.toolCalls.length === 0) break;
 
@@ -191,7 +207,11 @@ export async function researchNode(
           args = { query: call.arguments };
         }
 
-        const results = await executeWebSearch(args, { store: dbCacheStore, ttlClass: 'price' });
+        const results =
+          (await within(
+            executeWebSearch(args, { store: dbCacheStore, ttlClass: 'price' }),
+            2_500,
+          )) ?? [];
         for (const result of results.slice(0, 4)) {
           push(result.url, { query: call.arguments, entity: null, recencyDays: null, domains: [] }, result);
         }

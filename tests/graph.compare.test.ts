@@ -1,7 +1,7 @@
 ﻿import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import type { TurnStateType } from '../src/graph/state.js';
 
 type Repo = typeof import('../src/db/repo.js');
@@ -13,6 +13,7 @@ let compareNode: CompareNode;
 beforeAll(async () => {
   const dir = mkdtempSync(join(tmpdir(), 'since-compare-'));
   process.env.DB_PATH = join(dir, 'test.sqlite');
+  vi.resetModules();
   repo = await import('../src/db/repo.js');
   ({ compareNode } = await import('../src/graph/nodes/compare.js'));
 });

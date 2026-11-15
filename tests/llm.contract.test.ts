@@ -405,23 +405,23 @@ describe('embeddings', () => {
     expect(requests[0]?.config?.outputDimensionality).toBe(1536);
   });
 
-  it('retries when the embedding count does not match the input count', async () => {
-    let calls = 0;
+  it('requests one embedding per text', async () => {
+    const requests: EmbedContentParameters[] = [];
     const ai = {
       models: {
-        embedContent: async () => {
-          calls += 1;
-          return { embeddings: [{ values: [0.5] }] };
+        embedContent: async (input: EmbedContentParameters) => {
+          requests.push(input);
+          return { embeddings: [{ values: [requests.length] }] };
         },
       },
     } as unknown as GoogleGenAI;
 
-    const error: unknown = await embed(['a', 'b'], { ai, sleep: async () => {} }).catch(
-      (caught: unknown) => caught,
-    );
+    const vectors = await embed(['a', 'b'], { ai, sleep: async () => {} });
 
-    expect(error).toBeInstanceOf(EmbeddingError);
-    expect(calls).toBe(3);
+    expect(requests).toHaveLength(2);
+    expect(requests[0]?.contents).toEqual(['a']);
+    expect(requests[1]?.contents).toEqual(['b']);
+    expect(vectors).toHaveLength(2);
   });
 
   it('does not retry a permanent 400 and reports status and model', async () => {

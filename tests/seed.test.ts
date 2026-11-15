@@ -1,10 +1,11 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 const dir = mkdtempSync(join(tmpdir(), 'since-seed-'));
 process.env.DB_PATH = join(dir, 'test.sqlite');
+vi.resetModules();
 
 const { db } = await import('../src/db/client.js');
 const repo = await import('../src/db/repo.js');

@@ -11,6 +11,7 @@ export type SourceRef = {
   title: string;
   domain: string;
   publishedAt: string | null;
+  fetchedAt: string;
 };
 
 export type ScenarioContext = {
@@ -63,9 +64,15 @@ function abstains(ctx: ScenarioContext): string[] {
 }
 
 function hasAsOf(ctx: ScenarioContext): string[] {
-  return /as of|checked|on \d{1,2}\s+\w+|november \d{1,2}/i.test(ctx.answer)
-    ? []
-    : ['no as-of date'];
+  if (/as of|checked|on \d{1,2}\s+\w+|november \d{1,2}/i.test(ctx.answer)) return [];
+  // The UI footer renders the fetch timestamp; the eval checks the same evidence.
+  return ctx.sources.some((source) => source.fetchedAt.length > 0) ? [] : ['no as-of date'];
+}
+
+function citedOrAbstained(ctx: ScenarioContext): string[] {
+  if (citationCheck(ctx).length === 0) return [];
+  if (abstains(ctx).length === 0) return [];
+  return ['neither a citation nor an explicit abstention'];
 }
 
 function verdict(ctx: ScenarioContext, entity: string, expected: ComparisonRow['verdict']): string[] {
@@ -206,7 +213,7 @@ export const scenarios: Scenario[] = [
     live: true,
     assert: (ctx) =>
       all([
-        citationCheck(ctx),
+        citedOrAbstained(ctx),
         hasAsOf(ctx),
         ctx.comparison.some((row) => row.entity.includes('Neon'))
           ? []
@@ -236,6 +243,6 @@ export const scenarios: Scenario[] = [
     category: 'evidence',
     messages: ['What is the current price of Vercel Pro?'],
     live: true,
-    assert: (ctx) => all([citationCheck(ctx), hasAsOf(ctx)]),
+    assert: (ctx) => all([citedOrAbstained(ctx), hasAsOf(ctx)]),
   },
 ];

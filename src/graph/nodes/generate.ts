@@ -1,4 +1,4 @@
-import type { LangGraphRunnableConfig } from '@langchain/langgraph';
+﻿import type { LangGraphRunnableConfig } from '@langchain/langgraph';
 import { config as appConfig } from '../../config.js';
 import { chatStream } from '../../llm/openrouter.js';
 import { generateMessages } from '../prompts/generate.js';
@@ -40,7 +40,7 @@ export async function generateNode(
       evidence: state.evidence,
       comparison: state.comparison,
     }),
-    maxTokens: 900,
+    maxTokens: 1200,
     onUsage: (next) => {
       usage.promptTokens = next.promptTokens;
       usage.completionTokens = next.completionTokens;
@@ -64,3 +64,4 @@ export async function generateNode(
     ],
   };
 }
+

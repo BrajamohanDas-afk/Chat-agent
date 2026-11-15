@@ -1,4 +1,4 @@
-import type { PriceValue } from '../src/domain/pricing.js';
+﻿import type { PriceValue } from '../src/domain/pricing.js';
 
 /** The first demo session carries the exact marker title used for idempotency. */
 export const DEMO_MARKER_TITLE = 'Demo history';
@@ -103,7 +103,7 @@ export function demoSessionFixtures(now: Date): DemoSessionFixture[] {
     aliases: ['PostgreSQL'],
   };
   const hosting: DemoEntityFixture[] = [
-    { name: 'Neon', domain: 'neon.tech', aliases: ['Neon Postgres'] },
+    { name: 'Neon', domain: 'neon.com', aliases: ['Neon Postgres'] },
     { name: 'Supabase', domain: 'supabase.com', aliases: [] },
     {
       name: 'Amazon RDS',
@@ -171,3 +171,4 @@ export function demoSessionFixtures(now: Date): DemoSessionFixture[] {
     },
   ];
 }
+

@@ -78,23 +78,22 @@ export async function embed(texts: string[], deps: EmbedDeps = {}): Promise<Floa
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
     try {
-      const response = await ai.models.embedContent({
-        model,
-        contents: texts,
-        config: { outputDimensionality: config.embedding.dims },
-      });
-
-      const embeddings = response.embeddings ?? [];
-      if (embeddings.length !== texts.length) {
-        throw new EmbeddingError(
-          `Embedding count mismatch: expected ${texts.length}, received ${embeddings.length}`,
-          model,
-        );
-      }
+      // gemini-embedding-2 treats a `contents` array as one document and returns
+      // a single vector. Request one document per call so the result count is exact.
+      const responses = await Promise.all(
+        texts.map((text) =>
+          ai.models.embedContent({
+            model,
+            contents: [text],
+            config: { outputDimensionality: config.embedding.dims },
+          }),
+        ),
+      );
 
       const vectors: Float32Array[] = [];
-      for (const embedding of embeddings) {
-        if (!embedding.values || embedding.values.length === 0) {
+      for (const response of responses) {
+        const embedding = response.embeddings?.[0];
+        if (!embedding?.values || embedding.values.length === 0) {
           throw new EmbeddingError('Embedding response contained no vector values', model);
         }
         vectors.push(Float32Array.from(embedding.values));

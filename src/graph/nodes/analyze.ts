@@ -1,6 +1,6 @@
 import type { LangGraphRunnableConfig } from '@langchain/langgraph';
 import { config as appConfig } from '../../config.js';
-import { allEntities } from '../../db/repo.js';
+import { allEntities, currentClaims, episodesInRange } from '../../db/repo.js';
 import { resolveDate } from '../../domain/dates.js';
 import { chatJson } from '../../llm/openrouter.js';
 import { analyzeMessages } from '../prompts/analyze.js';
@@ -19,6 +19,14 @@ function event(node: string, detail: string, started: number): TraceEvent {
     detail,
     ms: Date.now() - started,
   };
+}
+
+function planOf(value: unknown): string | null {
+  if (typeof value === 'object' && value !== null && 'plan' in value) {
+    const plan = (value as { plan?: unknown }).plan;
+    return typeof plan === 'string' ? plan : null;
+  }
+  return null;
 }
 
 export async function analyzeNode(
@@ -52,10 +60,11 @@ export async function analyzeNode(
 
   emit?.({ type: 'status', stage: 'analyze', detail: 'reading the question' });
 
+  const entityRows = allEntities();
   const context = [state.userText, ...state.recent.slice(-4).map((turn) => turn.text)]
     .join(' ')
     .toLowerCase();
-  const knownEntities = allEntities()
+  const knownEntities = entityRows
     .filter(
       (entity) =>
         context.includes(entity.canonical_name.toLowerCase()) ||
@@ -95,21 +104,119 @@ export async function analyzeNode(
     }
   }
 
+  const intent = result.data.intent;
+  const needsSearch = intent === 'fresh' || intent === 'recheck';
+
+  // "them" / "those" in a follow-up can only be resolved from the episode the
+  // date points at. Backfill entities from that episode before planning search.
+  const byName = new Map<string, { name: string; domain: string | null; aliases: string[] }>();
+  for (const entity of result.data.entities) {
+    byName.set(entity.name.toLowerCase(), entity);
+  }
+
+  const recalledText: string[] = [];
+  if (intent === 'recall' || intent === 'recheck') {
+    for (const range of resolvedDates) {
+      if (!range.utcStart) continue;
+      for (const episode of episodesInRange(range.utcStart, range.utcEndExclusive)) {
+        recalledText.push(`${episode.question} ${episode.answer}`);
+        for (const name of episode.entities) {
+          const key = name.toLowerCase();
+          if (byName.has(key)) continue;
+          const row = entityRows.find(
+            (entity) =>
+              entity.canonical_name.toLowerCase() === key ||
+              entity.aliases.some((alias) => alias.toLowerCase() === key),
+          );
+          byName.set(key, {
+            name: row?.canonical_name ?? name,
+            domain: row?.domain ?? null,
+            aliases: row?.aliases ?? [],
+          });
+        }
+      }
+    }
+  }
+
+  const entities = [...byName.values()];
+  const year = new Date(state.now).getUTCFullYear();
+  const categoryText = [state.userText, ...recalledText].join(' ').toLowerCase();
+  const category = categoryText.includes('crm')
+    ? 'CRM'
+    : /postgres|database|hosting/.test(categoryText)
+      ? 'Postgres hosting'
+      : '';
+
+  const queryFor = (entity: { name: string }): string => {
+    const row = entityRows.find(
+      (candidate) => candidate.canonical_name.toLowerCase() === entity.name.toLowerCase(),
+    );
+    const plan = row
+      ? currentClaims(row.id)
+          .map((claim) => planOf(claim.value))
+          .find((value): value is string => value !== null)
+      : undefined;
+    const parts = [entity.name];
+    if (category && !entity.name.toLowerCase().includes(category.toLowerCase())) {
+      parts.push(category);
+    }
+    if (plan) parts.push(plan);
+    parts.push('pricing', String(year));
+    return parts.join(' ');
+  };
+  let searchPlan: Analysis['searchPlan'] = result.data.search_plan.map((plan) => ({
+    query: plan.query,
+    entity: plan.entity,
+    recencyDays: plan.recency_days,
+    domains: plan.domains,
+  }));
+
+  // Generic "CRM pricing" queries cannot answer a per-vendor recheck. When the
+  // entities are known, replace a fully generic plan with one query per entity.
+  if (needsSearch && entities.length > 0 && searchPlan.every((plan) => plan.entity === null)) {
+    searchPlan = entities.map((entity) => ({
+      query: queryFor(entity),
+      entity: entity.name,
+      recencyDays: null,
+      domains: entity.domain ? [entity.domain] : [],
+    }));
+    searchPlan.push({
+      query: `pricing changes ${year}`,
+      entity: null,
+      recencyDays: 30,
+      domains: [],
+    });
+  }
+
+  for (const entity of entities) {
+    if (searchPlan.length >= appConfig.caps.parallelSearches) break;
+    if (searchPlan.some((plan) => plan.entity?.toLowerCase() === entity.name.toLowerCase())) {
+      continue;
+    }
+    searchPlan.push({
+      query: queryFor(entity),
+      entity: entity.name,
+      recencyDays: null,
+      domains: entity.domain ? [entity.domain] : [],
+    });
+  }
+  searchPlan = searchPlan.slice(0, appConfig.caps.parallelSearches);
+
+  const comparisonTargets =
+    intent === 'recheck'
+      ? [...new Set([...result.data.comparison_targets, ...entities.map((entity) => entity.name)])]
+      : result.data.comparison_targets;
+
   const analysis: Analysis = {
-    intent: result.data.intent,
-    entities: result.data.entities,
+    intent,
+    entities,
     dateExpressions: result.data.date_expressions,
     resolvedDates,
     decisions: result.data.decisions,
     attributes: result.data.attributes,
-    searchPlan: result.data.search_plan.slice(0, appConfig.caps.parallelSearches).map((plan) => ({
-      query: plan.query,
-      entity: plan.entity,
-      recencyDays: plan.recency_days,
-      domains: plan.domains,
-    })),
-    needsSearch: result.data.intent !== 'smalltalk' && result.data.needs_search,
-    comparisonTargets: result.data.comparison_targets,
+    searchPlan,
+    needsSearch,
+    comparisonTargets,
   };
 
   emit?.({

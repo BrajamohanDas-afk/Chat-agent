@@ -1,6 +1,6 @@
 import type { LangGraphRunnableConfig } from '@langchain/langgraph';
 import { currentClaims, findEntity } from '../../db/repo.js';
-import { compareLimit, comparePrices, type PriceValue } from '../../domain/pricing.js';
+import { compareLimit, comparePrices, planKey, type PriceValue } from '../../domain/pricing.js';
 import type { TurnStateType, TurnStateUpdate } from '../state.js';
 import type {
   ChangeReason,
@@ -61,11 +61,16 @@ function planOf(value: unknown): string | null {
 function samePlan(before: unknown, after: Observation): boolean {
   const beforePlan = planOf(before);
   if (beforePlan === null || after.plan === null) return beforePlan === after.plan;
-  return norm(beforePlan) === norm(after.plan);
+  return planKey(beforePlan) === planKey(after.plan);
 }
 
 function sameAttribute(before: string, after: string): boolean {
-  return norm(before) === norm(after);
+  const left = norm(before);
+  const right = norm(after);
+  if (left === right) return true;
+  // Seed claims use "price"; live extraction uses "price.<plan>". They describe
+  // the same attribute family and must be comparable.
+  return left.startsWith('price') && right.startsWith('price');
 }
 
 export async function compareNode(
@@ -74,7 +79,9 @@ export async function compareNode(
 ): Promise<TurnStateUpdate> {
   const started = Date.now();
   const emit = emitOf(config);
-  const targets = state.analysis?.comparisonTargets ?? [];
+  const targets = state.analysis?.comparisonTargets.length
+    ? state.analysis.comparisonTargets
+    : (state.analysis?.entities.map((entity) => entity.name) ?? []);
   const rows: ComparisonRow[] = [];
 
   for (const target of targets) {
@@ -119,11 +126,20 @@ export async function compareNode(
     }
 
     for (const observation of fresh) {
-      const previous = oldClaims.find(
-        (claim) =>
-          sameAttribute(claim.attribute, observation.attribute) &&
-          samePlan(claim.value, observation),
-      );
+      const previous =
+        oldClaims.find(
+          (claim) =>
+            sameAttribute(claim.attribute, observation.attribute) &&
+            samePlan(claim.value, observation),
+        ) ??
+        // No same-plan baseline: compare against the nearest price baseline for
+        // the entity so the answer can say "the plan changed", not "no baseline".
+        oldClaims.find(
+          (claim) =>
+            sameAttribute(claim.attribute, observation.attribute) &&
+            isPrice(claim.value) &&
+            isPrice(observation.value),
+        );
 
       const reasons: ChangeReason[] = [];
       const baselineVerified = previous?.verification === 'verified';

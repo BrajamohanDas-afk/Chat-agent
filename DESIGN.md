@@ -110,7 +110,7 @@ Dates resolve against one reference instant in the user's timezone (default `Asi
 
 Hard assertions gate: correct episode and entities, correct date interval, correct comparison status, citations present and supported, no invented history, abstention where evidence is missing. A judge scores tone and usefulness and is reported, not gated. Report: Recall@5, entity recall, decision accuracy, temporal accuracy, change precision and recall, citation support, abstention, time to first token, p50/p95, searches per turn, failure rate.
 
-**Measured (offline suite, 15 Nov 2026, 10 scenarios, no Tavily key):** 10/10 hard assertions passed, 5 live scenarios skipped; p50 end-to-end 3.7 s, p95 5.3 s; first token 0.7–4.6 s; judge means 4.9/5 answers, 4.2 concise, 5.0 honest. The analyzer is the floor at 1.2–3.0 s depending on provider load; deterministic recall adds 1–4 ms. The 8 s p50 and 15 s p95 targets hold offline; the 1.2/2.5 s first-token targets do not. Live search numbers will replace this line when a Tavily key is present. The timings above remain targets, not claims.
+**Measured (live suite, 15 Nov 2026, 15 scenarios, all keys present):** 15/15 hard assertions passed; p50 4.8 s, p95 22.6 s; first token 0.8–16.8 s; judge means 4.4/5 answers, 4.2 concise, 4.9 honest. Memory-only recall and date turns run in 2–5 s; five-vendor live rechecks take 15–22 s because search, extraction and validation dominate. The 8 s p50 and 15 s p95 targets hold for memory-only turns, not for live multi-vendor rechecks; that is the first thing to optimize next. The timings above remain targets, not claims.
 
 ## Limits
 

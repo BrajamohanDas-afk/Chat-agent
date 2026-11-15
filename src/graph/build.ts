@@ -2,27 +2,20 @@ import { END, START, StateGraph } from '@langchain/langgraph';
 import { analyzeNode } from './nodes/analyze.js';
 import { compareNode } from './nodes/compare.js';
 import { extractNode } from './nodes/extract.js';
+import { gatherNode } from './nodes/gather.js';
 import { generateNode } from './nodes/generate.js';
 import { normalizeNode } from './nodes/normalize.js';
 import { persistNode } from './nodes/persist.js';
-import { recallNode } from './nodes/recall.js';
 import { repairNode } from './nodes/repair.js';
-import { researchNode } from './nodes/research.js';
 import { validateNode } from './nodes/validate.js';
-import { routeAnalyze, routeCompare, routeExtract, routeRepair } from './routers.js';
-import { TurnState, type TurnStateType, type TurnStateUpdate } from './state.js';
+import { routeCompare, routeGather, routeRepair } from './routers.js';
+import { TurnState, type TurnStateType } from './state.js';
 import type { Emit } from './types.js';
-
-async function joinNode(_state: TurnStateType): Promise<TurnStateUpdate> {
-  return {};
-}
 
 const graph = new StateGraph(TurnState)
   .addNode('analyze', analyzeNode)
-  .addNode('memory', recallNode)
-  .addNode('research', researchNode)
+  .addNode('gather', gatherNode)
   .addNode('normalize', normalizeNode)
-  .addNode('join', joinNode)
   .addNode('extract', extractNode)
   .addNode('compare', compareNode)
   .addNode('generate', generateNode)
@@ -30,11 +23,9 @@ const graph = new StateGraph(TurnState)
   .addNode('repair', repairNode)
   .addNode('persist', persistNode)
   .addEdge(START, 'analyze')
-  .addConditionalEdges('analyze', routeAnalyze, ['memory', 'research', 'join'])
-  .addEdge('memory', 'join')
-  .addEdge('research', 'normalize')
-  .addEdge('normalize', 'join')
-  .addConditionalEdges('join', routeExtract, ['extract', 'generate'])
+  .addEdge('analyze', 'gather')
+  .addConditionalEdges('gather', routeGather, ['normalize', 'generate'])
+  .addEdge('normalize', 'extract')
   .addConditionalEdges('extract', routeCompare, ['compare', 'generate'])
   .addEdge('compare', 'generate')
   .addEdge('generate', 'validate')
