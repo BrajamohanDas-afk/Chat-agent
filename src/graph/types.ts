@@ -2,7 +2,7 @@ import type { ChangeReason as PriceChangeReason } from '../domain/pricing.js';
 
 export type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 
-export type Intent = 'fresh' | 'recall' | 'recheck' | 'smalltalk';
+export type Intent = 'fresh' | 'recall' | 'recheck' | 'chat';
 export type Volatility = 'price' | 'feature' | 'stable';
 export type SourceType = 'user_statement' | 'assistant_statement' | 'web_observation';
 export type Verification = 'unverified' | 'verified' | 'disputed' | 'inaccessible';

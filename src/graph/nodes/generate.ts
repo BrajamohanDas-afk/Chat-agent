@@ -31,7 +31,7 @@ export async function generateNode(
       now: state.now,
       timezone: state.timezone,
       userText: state.userText,
-      recent: state.recent.slice(-4).map((turn) => ({
+      recent: state.recent.slice(-8).map((turn) => ({
         role: turn.role,
         text: turn.text.slice(0, 500),
       })),

@@ -21,7 +21,7 @@ export async function gatherNode(
   const emit = emitOf(config);
   const tasks: Promise<TurnStateUpdate>[] = [];
 
-  if (state.analysis?.intent !== 'smalltalk') tasks.push(recallNode(state, config));
+  if (state.analysis?.intent !== 'chat') tasks.push(recallNode(state, config));
   if (state.analysis?.needsSearch) tasks.push(researchNode(state, config));
 
   const results = await Promise.all(tasks);

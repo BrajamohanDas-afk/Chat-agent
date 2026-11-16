@@ -36,15 +36,15 @@ export async function analyzeNode(
   const started = Date.now();
   const emit = emitOf(config);
 
-  const smalltalk =
+  const chat =
     /^(hi|hello|hey|thanks|thank you|good (morning|afternoon|evening))([!,. ]+(who are you|what are you|there))?[!?., ]*$/i.test(
       state.userText.trim(),
     ) || /^(who|what) are you[?.! ]*$/i.test(state.userText.trim());
 
-  if (smalltalk) {
+  if (chat) {
     return {
       analysis: {
-        intent: 'smalltalk',
+        intent: 'chat',
         entities: [],
         dateExpressions: [],
         resolvedDates: [],
@@ -54,7 +54,7 @@ export async function analyzeNode(
         needsSearch: false,
         comparisonTargets: [],
       },
-      trace: [event('analyze', 'deterministic smalltalk', started)],
+      trace: [event('analyze', 'deterministic chat', started)],
     };
   }
 

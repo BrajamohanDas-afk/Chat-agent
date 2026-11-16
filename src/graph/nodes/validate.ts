@@ -70,7 +70,7 @@ export async function validateNode(
 
   if (
     state.draft.trim() === '' ||
-    state.analysis?.intent === 'smalltalk' ||
+    state.analysis?.intent === 'chat' ||
     state.analysis?.intent === 'recall'
   ) {
     return {

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const AnalysisSchema = z.strictObject({
-  intent: z.enum(['fresh', 'recall', 'recheck', 'smalltalk']),
+  intent: z.enum(['fresh', 'recall', 'recheck', 'chat']),
   entities: z.array(
     z.strictObject({
       name: z.string().min(1),

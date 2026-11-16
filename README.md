@@ -25,7 +25,7 @@ Optional: `PORT` (default 3000), `USER_TIMEZONE` (default `Asia/Kolkata`).
 
 Click **Load demo history** and try the three prompts:
 
-1. "On Monday we shortlisted 5 CRM tools for a 20-person sales team. Has any of them changed pricing or shipped something big since?"
+1. "Last Monday we shortlisted 5 CRM tools for a 20-person sales team. Has any of them changed pricing or shipped something big since?"
 2. "What did I ask you on 3 November? Is your answer still correct today?"
 3. "Last Tuesday I asked you about Postgres hosting. Has any pricing changed since then?"
 

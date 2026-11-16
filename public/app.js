@@ -2,9 +2,13 @@
 
 const EXAMPLES = [
   {
+    tag: 'chat',
+    prompt: 'Hey — what can you do?',
+  },
+  {
     tag: 'compare',
     prompt:
-      'On Monday we shortlisted 5 CRM tools for a 20-person sales team. Has any of them changed pricing or shipped something big since?',
+      'Last Monday we shortlisted 5 CRM tools for a 20-person sales team. Has any of them changed pricing or shipped something big since?',
   },
   {
     tag: 'recall',

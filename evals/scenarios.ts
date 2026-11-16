@@ -114,7 +114,7 @@ export const scenarios: Scenario[] = [
   {
     id: 'recall-monday',
     category: 'recall',
-    messages: ['What did we shortlist on Monday?'],
+    messages: ['What did we shortlist last Monday?'],
     live: false,
     assert: (ctx) =>
       all([
@@ -151,15 +151,29 @@ export const scenarios: Scenario[] = [
     assert: (ctx) => dateContains(ctx, 'tuesday'),
   },
   {
-    id: 'smalltalk',
-    category: 'routing',
+    id: 'chat-greeting',
+    category: 'chat',
     messages: ['Hello'],
     live: false,
     assert: (ctx) =>
       all([
-        ctx.analysis?.intent === 'smalltalk' ? [] : [`intent ${ctx.analysis?.intent}`],
-        ctx.searches === 0 ? [] : [`${ctx.searches} searches on smalltalk`],
-        ctx.answer.length < 600 ? [] : ['smalltalk answer too long'],
+        ctx.analysis?.intent === 'chat' ? [] : [`intent ${ctx.analysis?.intent}`],
+        ctx.searches === 0 ? [] : [`${ctx.searches} searches on chat`],
+        ctx.answer.length < 600 ? [] : ['chat answer too long'],
+      ]),
+  },
+  {
+    id: 'chat-general',
+    category: 'chat',
+    messages: ['How are you?'],
+    live: false,
+    assert: (ctx) =>
+      all([
+        ctx.analysis?.intent === 'chat' ? [] : [`intent ${ctx.analysis?.intent}`],
+        ctx.searches === 0 ? [] : [`${ctx.searches} searches on chat`],
+        /recheck|remembered answers|web evidence/i.test(ctx.answer)
+          ? ['canned evidence reply']
+          : [],
       ]),
   },
   {
@@ -187,7 +201,11 @@ export const scenarios: Scenario[] = [
     messages: ['What did I ask you on 3 November about Kubernetes?'],
     live: false,
     assert: (ctx) =>
-      /you asked (me )?about kubernetes/i.test(ctx.answer)
+      // Only an affirmative claim of a 3 Nov conversation is fabrication; a
+      // conditional "if you asked about Kubernetes..." is a correct denial.
+      /(^|[.!?]\s+)(on 3 november( 2026)?,? )?you asked (me )?about kubernetes/i.test(
+        ctx.answer,
+      )
         ? ['fabricated a Kubernetes conversation']
         : [],
   },
@@ -195,7 +213,7 @@ export const scenarios: Scenario[] = [
     id: 'crm-recheck',
     category: 'recheck',
     messages: [
-      'On Monday we shortlisted 5 CRM tools for a 20-person sales team. Has any of them changed pricing or shipped something big since?',
+      'Last Monday we shortlisted 5 CRM tools for a 20-person sales team. Has any of them changed pricing or shipped something big since?',
     ],
     live: true,
     assert: (ctx) =>

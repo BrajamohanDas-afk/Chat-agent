@@ -38,9 +38,9 @@ flowchart TD
 **Each step and its budget. These are targets, not measurements.**
 
 1. **t=0, no model call.** Recent turns and FTS5 candidates load immediately; the query embedding runs beside the analyzer.
-2. **Analyze (~400 ms, haiku).** One structured call returns intent (`fresh`, `recall`, `recheck`, `smalltalk`), entities and aliases, dates as half-open UTC intervals from one reference instant, volatility per attribute, and a search plan.
+2. **Analyze (~400 ms, haiku).** One structured call returns intent (`fresh`, `recall`, `recheck`, `chat`), entities and aliases, dates as half-open UTC intervals from one reference instant, volatility per attribute, and a search plan. `chat` covers greetings, meta, opinions and stable explanations; anything that may change over time stays `fresh` so it gets a stored baseline.
 3. **Recall (~0 ms added).** BM25 plus cosine, fused with RRF. Retrieval returns an explicit outcome: `exact`, `likely`, `multiple`, `not_found`, `insufficient_context`.
-4. **Route.** Smalltalk answers directly; stable recall needs no search; volatile recall becomes a recheck; fresh skips comparison. This is why "what did I ask on 3 Nov" takes a second, not eight.
+4. **Route.** Chat answers directly with the conversational prompt; stable recall needs no search; volatile recall becomes a recheck; fresh skips comparison. This is why "what did I ask on 3 Nov" takes a second, not eight.
 5. **Research (~1.5–3 s).** One query per entity plus one recency query, up to eight in parallel, six-second budget. Thin coverage gives a research LLM the single `web_search` tool for at most three refinement calls. Every result becomes an evidence row: URL, domain, title, published date, passage, hash, source rank.
 6. **Extract claims (after research, before comparison).** Haiku records observations with provenance (`user_statement`, `assistant_statement`, `web_observation`) and verification (`unverified`, `verified`, `disputed`, `inaccessible`). Only web observations can be verified; repetition never promotes an assistant statement.
 7. **Normalize and compare (code).** Prices carry amount, currency, period, mode, unit, plan, region and conditions. Comparison is field by field, records the specific reason (`price_increased`, `unit_changed`, `billing_period_changed`, `plan_changed`, `limit_changed`, `discontinued`, `no_material_change`, `insufficient_evidence`) and exposes changed / unchanged / unclear. An unsourced old value is never a confirmed baseline.
@@ -106,17 +106,18 @@ Dates resolve against one reference instant in the user's timezone (default `Asi
 
 ## Evals
 
-`npm run eval` uses a scratch database, a synthetic three-session history and ~32 live scenarios across fifteen categories: exact recall, relative dates, entity recall, missing history, multiple matches, historical baseline, current research, price normalization, future announcements, conflicting evidence, inaccessible sources, releases, discontinuations, immediate follow-up and concurrent turns. Comparison and date logic also get deterministic fixture tests, because live results cannot be ground truth for arithmetic.
+`npm run eval` uses a scratch database, a synthetic three-session history and 16 scenarios in seven categories: 11 memory-only (recall-nov3, recall-monday, recall-last-tuesday, followup, date-nov3, date-last-tuesday, missing-history, synthetic-label, no-fabrication, chat-greeting, chat-general) and 5 live-search (crm-recheck, postgres-recheck, fresh-hubspot, unverified-baseline, citation-support). It writes a per-scenario JSON report to `evals/results/` (gitignored), so reviewers can rerun it. Comparison and date logic also get deterministic fixture tests, because live results cannot be ground truth for arithmetic.
 
-Hard assertions gate: correct episode and entities, correct date interval, correct comparison status, citations present and supported, no invented history, abstention where evidence is missing. A judge scores tone and usefulness and is reported, not gated. Report: Recall@5, entity recall, decision accuracy, temporal accuracy, change precision and recall, citation support, abstention, time to first token, p50/p95, searches per turn, failure rate.
+Each scenario gates several hard assertions: correct episode and entities, correct date interval, correct comparison status, citations present and supported, no invented history, abstention where evidence is missing. A judge scores question fit, conciseness and honesty; it is reported, not gated. The per-scenario report records pass/fail/skip, latency, first-token time, planned searches and judge scores; the summary adds p50/p95.
 
-**Measured (live suite, 15 Nov 2026, 15 scenarios, all keys present):** 15/15 hard assertions passed; p50 4.8 s, p95 22.6 s; first token 0.8–16.8 s; judge means 4.4/5 answers, 4.2 concise, 4.9 honest. Memory-only recall and date turns run in 2–5 s; five-vendor live rechecks take 15–22 s because search, extraction and validation dominate. The 8 s p50 and 15 s p95 targets hold for memory-only turns, not for live multi-vendor rechecks; that is the first thing to optimize next. The timings above remain targets, not claims.
+**Measured (16 Nov 2026, live search enabled, 0 skipped):** 16/16 scenarios passed; p50 4133 ms, p95 22353 ms; first token 873–17186 ms; judge means 4.50 answers / 4.06 concise / 4.75 honest. Memory-only turns run in 2594–5994 ms; live rechecks take 14056–22353 ms because search, extraction and validation dominate. The 8 s p50 and 15 s p95 targets hold for memory-only turns, not for live multi-vendor rechecks; that is the first thing to optimize next.
 
 ## Limits
 
 - Synthetic demo history is labeled at row level and in the UI. Old values are plausible, not quotes.
 - Extraction is lossy; "per seat" vs "per workspace" can cause a false diff, so the diff shows plan, unit and period.
 - Tavily cannot see logged-in or paywalled pages; the agent says so.
+- Search and refinement cancel at their configured budgets, but a turn itself has no wall-clock deadline.
 - Single user, localhost, no auth; rechecks are on demand, no scheduler.
 - Only retrieved passages go to model providers, never the full transcript. Free-tier embeddings may train Google's products; embedded text is public or synthetic.
 
@@ -126,4 +127,4 @@ Hard assertions gate: correct episode and entities, correct date interval, corre
 2. **Archived sources** — real "as of 3 Nov" quotes instead of seeded approximations.
 3. **Span-level entailment** — check the exact fragment against the exact quote.
 4. **Adaptive routing** — escalate only when the validator is uncertain.
-5. **A human-labelled eval set** — a hundred cases, not thirty-two.
+5. **A human-labelled eval set** — a hundred cases, not sixteen.

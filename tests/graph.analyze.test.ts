@@ -1,7 +1,7 @@
 ﻿import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TurnStateType } from '../src/graph/state.js';
 import type { Analysis } from '../src/graph/types.js';
 
@@ -9,15 +9,9 @@ const { chatJson } = vi.hoisted(() => ({ chatJson: vi.fn() }));
 
 vi.mock('../src/llm/openrouter.js', () => ({ chatJson }));
 
-type AnalyzeNode = typeof import('../src/graph/nodes/analyze.js').analyzeNode;
-let analyzeNode: AnalyzeNode;
-
-beforeAll(async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'since-analyze-'));
-  process.env.DB_PATH = join(dir, 'test.sqlite');
-  vi.resetModules();
-  ({ analyzeNode } = await import('../src/graph/nodes/analyze.js'));
-});
+const dir = mkdtempSync(join(tmpdir(), 'since-analyze-'));
+process.env.DB_PATH = join(dir, 'test.sqlite');
+const { analyzeNode } = await import('../src/graph/nodes/analyze.js');
 
 beforeEach(() => {
   chatJson.mockReset();
@@ -75,12 +69,34 @@ describe('analyzeNode', () => {
   it('answers greetings without a model call', async () => {
     const result = await analyzeNode(state('Hello, who are you?'));
 
-    expect((result.analysis as Analysis | null)?.intent).toBe('smalltalk');
+    expect((result.analysis as Analysis | null)?.intent).toBe('chat');
     expect((result.analysis as Analysis | null)?.needsSearch).toBe(false);
     expect(chatJson).not.toHaveBeenCalled();
   });
 
-  it('does not treat a greeting with a real question as smalltalk', async () => {
+  it('classifies general conversation as chat without searching', async () => {
+    chatJson.mockResolvedValue({
+      data: {
+        intent: 'chat',
+        entities: [],
+        date_expressions: [],
+        decisions: [],
+        attributes: [],
+        search_plan: [],
+        needs_search: false,
+        comparison_targets: [],
+      },
+      usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+    });
+
+    const result = await analyzeNode(state('Tell me a joke'));
+
+    expect((result.analysis as Analysis | null)?.intent).toBe('chat');
+    expect((result.analysis as Analysis | null)?.needsSearch).toBe(false);
+    expect(chatJson).toHaveBeenCalledOnce();
+  });
+
+  it('does not treat a greeting with a real question as chat', async () => {
     chatJson.mockResolvedValue({
       data: {
         intent: 'fresh',

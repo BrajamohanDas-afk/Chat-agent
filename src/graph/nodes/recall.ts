@@ -18,7 +18,7 @@ export async function recallNode(
   const started = Date.now();
   const emit = emitOf(config);
 
-  if (!state.analysis || state.analysis.intent === 'smalltalk') {
+  if (!state.analysis || state.analysis.intent === 'chat') {
     return { recall: null, trace: [event('recall', 'skipped', started)] };
   }
 

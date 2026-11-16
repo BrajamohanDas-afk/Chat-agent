@@ -16,6 +16,34 @@ export function generateMessages(input: {
   evidence: EvidenceRow[];
   comparison: ComparisonRow[];
 }): ChatMessage[] {
+  if (input.analysis?.intent === 'chat') {
+    const recent = input.recent.length
+      ? input.recent.map((turn) => `${turn.role}: ${turn.text}`).join('\n')
+      : 'none';
+
+    return [
+      {
+        role: 'system',
+        content: `You are Since, a friendly chat assistant. You remember the conversation and can check whether facts you gave earlier are still true.
+
+Reply naturally and concisely, like a normal chat assistant. Use the recent conversation for context; do not force citations or talk about memory, evidence, or rechecking unless the user asks.
+
+Never invent current prices, plans, or other facts that may have changed. If the user asks for one, say you can look it up.`,
+      },
+      {
+        role: 'user',
+        content: `Current time: ${input.now}
+Timezone: ${input.timezone}
+
+Recent turns:
+${recent}
+
+User message:
+${input.userText}`,
+      },
+    ];
+  }
+
   const system = `You are Since, a chat agent that remembers what it told the user and checks whether it is still true.
 
 Answer the user's actual question, concisely, using only the provided memory and evidence.
