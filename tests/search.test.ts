@@ -203,6 +203,24 @@ describe('tavilySearch', () => {
     ).rejects.toMatchObject({ name: 'TavilyError', status: 400 });
     expect(attempt).toBe(1);
   });
+
+  it('does not retry when the caller aborts', async () => {
+    const controller = new AbortController();
+    let calls = 0;
+    const fakeFetch = (async () => {
+      calls += 1;
+      controller.abort();
+      throw new DOMException('Aborted', 'AbortError');
+    }) as typeof fetch;
+
+    await expect(
+      tavilySearch(
+        { query: 'x', signal: controller.signal },
+        { fetch: fakeFetch, apiKey: 'test-key', sleep: async () => {} },
+      ),
+    ).rejects.toMatchObject({ name: 'TavilyError' });
+    expect(calls).toBe(1);
+  });
 });
 
 describe('cache', () => {

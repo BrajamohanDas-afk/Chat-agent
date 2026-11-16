@@ -172,7 +172,7 @@ export async function tavilySearch(
       return normalizeTavilyResponse(await response.json());
     } catch (error) {
       lastError = error;
-      if (attempt === MAX_ATTEMPTS - 1 || !isRetryable(error)) break;
+      if (attempt === MAX_ATTEMPTS - 1 || input.signal?.aborted || !isRetryable(error)) break;
       await sleep(250 + Math.random() * 100);
     }
   }

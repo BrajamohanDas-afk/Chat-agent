@@ -50,6 +50,7 @@ export type WebSearchDeps = {
   search?: (input: TavilySearchInput) => Promise<SearchResult[]>;
   ttlClass?: TtlClass;
   now?: () => string;
+  signal?: AbortSignal;
 };
 
 export async function executeWebSearch(
@@ -69,6 +70,7 @@ export async function executeWebSearch(
     topic: parsed.topic,
     recencyDays: parsed.recency_days,
     domains: parsed.domains,
+    signal: deps.signal,
   });
 
   await putCached(deps.store, {

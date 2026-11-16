@@ -24,15 +24,19 @@ function event(node: string, detail: string, started: number): TraceEvent {
   return { at: new Date().toISOString(), node, detail, ms: Date.now() - started };
 }
 
-async function within<T>(promise: Promise<T>, ms: number): Promise<T | null> {
-  let timer: NodeJS.Timeout | undefined;
-  const timeout = new Promise<null>((resolve) => {
-    timer = setTimeout(() => resolve(null), ms);
+async function within<T>(
+  run: (signal: AbortSignal) => Promise<T>,
+  ms: number,
+): Promise<T | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  const aborted = new Promise<null>((resolve) => {
+    controller.signal.addEventListener('abort', () => resolve(null), { once: true });
   });
   try {
-    return await Promise.race([promise, timeout]);
+    return await Promise.race([run(controller.signal), aborted]);
   } finally {
-    if (timer) clearTimeout(timer);
+    clearTimeout(timer);
   }
 }
 
@@ -71,15 +75,16 @@ export async function researchNode(
     plan.map(async (item) => {
       const ttlClass = volatilityByEntity.get(item.entity?.trim().toLowerCase() ?? '') ?? 'price';
       const results = await within(
-        executeWebSearch(
-          {
-            query: item.query,
-            recency_days: item.recencyDays ?? undefined,
-            topic: item.entity === null && item.recencyDays !== null ? 'news' : 'general',
-            domains: item.domains.length > 0 ? item.domains : undefined,
-          },
-          { store: dbCacheStore, ttlClass },
-        ),
+        (signal) =>
+          executeWebSearch(
+            {
+              query: item.query,
+              recency_days: item.recencyDays ?? undefined,
+              topic: item.entity === null && item.recencyDays !== null ? 'news' : 'general',
+              domains: item.domains.length > 0 ? item.domains : undefined,
+            },
+            { store: dbCacheStore, ttlClass, signal },
+          ),
         appConfig.caps.searchBudgetMs,
       );
       return { item, results: results ?? [], timedOut: results === null };
@@ -159,16 +164,18 @@ export async function researchNode(
       }),
     ];
 
-    const refineStarted = Date.now();
-    const refineBudgetMs = 4_000;
+    const refineDeadline = Date.now() + 4_000;
+    // shortcut: the turn itself has no wall-clock deadline; add one in runTurn if providers stall.
 
     for (
       let round = 0;
       round < appConfig.caps.refinementCalls &&
-      refinementCalls < appConfig.caps.refinementCalls &&
-      Date.now() - refineStarted < refineBudgetMs;
+      refinementCalls < appConfig.caps.refinementCalls;
       round += 1
     ) {
+      const remaining = refineDeadline - Date.now();
+      if (remaining <= 0) break;
+
       let response: Awaited<ReturnType<typeof chatTools>>;
       try {
         response = await chatTools({
@@ -177,7 +184,7 @@ export async function researchNode(
           tools: [webSearchTool],
           toolChoice: 'auto',
           maxTokens: 700,
-          signal: AbortSignal.timeout(3_000),
+          signal: AbortSignal.timeout(Math.min(remaining, 3_000)),
         });
       } catch {
         // Refinement is best effort; first-round evidence still answers the turn.
@@ -198,6 +205,10 @@ export async function researchNode(
 
       for (const call of response.toolCalls) {
         if (refinementCalls >= appConfig.caps.refinementCalls) break;
+
+        const remaining = refineDeadline - Date.now();
+        if (remaining <= 0) break;
+
         refinementCalls += 1;
 
         let args: unknown;
@@ -209,8 +220,8 @@ export async function researchNode(
 
         const results =
           (await within(
-            executeWebSearch(args, { store: dbCacheStore, ttlClass: 'price' }),
-            2_500,
+            (signal) => executeWebSearch(args, { store: dbCacheStore, ttlClass: 'price', signal }),
+            Math.min(2_500, remaining),
           )) ?? [];
         for (const result of results.slice(0, 4)) {
           push(result.url, { query: call.arguments, entity: null, recencyDays: null, domains: [] }, result);
